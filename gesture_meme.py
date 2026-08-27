@@ -563,6 +563,19 @@ def main():
     if not spin_video_cap.isOpened():
         raise FileNotFoundError(f"missing meme file: {MEMES / GESTURE_MEMES['spinCat'][0]}")
 
+    # one-time startup diagnostic: on Windows, cv2.VideoCapture can silently
+    # fail to decode .mov (isOpened() sometimes still reports True, but
+    # frame_count comes back <= 0 and/or the first read() fails) - this
+    # pins down whether "spin plays a blank/frozen Meme window" is a codec
+    # problem, independent of whether the spinCat gesture itself is firing.
+    spin_frame_count = spin_video_cap.get(cv2.CAP_PROP_FRAME_COUNT)
+    spin_first_read_ok, _ = spin_video_cap.read()
+    print(
+        f"[spin video diagnostic] isOpened={spin_video_cap.isOpened()} "
+        f"frame_count={spin_frame_count} first_read_ok={spin_first_read_ok}"
+    )
+    spin_video_cap.set(cv2.CAP_PROP_POS_FRAMES, 0)  # rewind past the diagnostic read
+
     def next_spin_frame():
         ok, vframe = spin_video_cap.read()
         if not ok:
