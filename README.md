@@ -1,45 +1,53 @@
 # Meowmeow cat cam meme detector
 
-Point your webcam at yourself, make a face/hand gesture, get a cat meme back in real time. Runs either as a desktop app (OpenCV windows) or entirely in the browser (MediaPipe WASM, no install).
+Kieruj kamerkę na siebie, zrób minę albo gest ręką i w czasie rzeczywistym dostajesz w zamian kociego mema. Działa jako appka desktopowa (okna OpenCV) albo całkowicie w przeglądarce (MediaPipe WASM, bez instalacji).
 
-Two windows/panes side by side: 
-- **Camera** — your webcam feed with hand landmarks drawn on top, plus a live debug readout in the corner
-- **Meme** — the meme matching whatever gesture you're currently making
+Dwa okna/panele obok siebie:
+- **Camera** — obraz z kamerki z naniesionymi punktami dłoni, plus podgląd debugowy na żywo w rogu
+- **Meme** — mem pasujący do gestu, który akurat robisz
 
-## Gestures
+## Gesty
 
-Checked in this order — when a pose could match more than one, the earlier one wins.
+Sprawdzane w tej kolejności — jeśli poza pasuje do więcej niż jednego gestu, wygrywa ten wcześniejszy.
 
-| # | Gesture | How to trigger |
+| # | Gesture | Jak wywołać |
 |---|---|---|
-| 1 | Muehehe | Both hands up, index fingers only, tips touching |
-| 2 | You're late! cat | One hand points, its fingertip near the other hand's wrist ("point at your watch") |
-| 3 | Devo cat | Both hands up, above the top of your head |
-| 4 | Crash out cord chewing kitty | Both hands up beside your face to hold yummy electrical cable |
-| 5 | Thumbs up cat | One hand, thumb out, other four fingers curled |
-| 6 | I will punch you | One hand, all four fingers curled, thumb tucked in |
-| 7 | EHHEHEEEHEEEE | Thumb + pinky out, rockstar cat |
-| 8 | Shhh silenced cat | Index finger only, tip resting on your mouth |
-| 9 | Laugh and point cat | Index finger only, pointed straight at the lens (not up) — the finger foreshortens hard in 2D and its tip reads closer to the camera than your wrist |
-| 10 | Erm ackshuALLY! cat | Index finger only, held away from your face |
-| 11 | Shocked/kidnapped cat | Hand cover mouth |
-| 12 | gGIMME MONIE!! | One open palm, all fingers extended, away from your face |
-| 13 | Side eye cat | Turn your head 15°+ either way (real head-pose yaw) |
-| 14 | Pokercat | Default |
-| 15 | Spinny OIIAI cat | You spin!!!! |
+| 1 | Muehehe | Obie ręce w górze, tylko wyprostowane palce wskazujące, czubki się stykają |
+| 2 | You're late! cat | Jedna ręka wskazuje, jej czubek palca blisko nadgarstka drugiej ręki ("pokazujesz na zegarek") |
+| 3 | Devo cat | Obie ręce w górze, powyżej czubka głowy |
+| 4 | Crash out cord chewing kitty | Obie ręce przy twarzy, jakbyś trzymał(a) pyszny kabelek elektryczny do pogryzienia |
+| 5 | Thumbs up cat | Jedna ręka, kciuk wystawiony, reszta palców zwinięta |
+| 6 | I will punch you | Jedna ręka, wszystkie cztery palce zwinięte, kciuk schowany |
+| 7 | EHHEHEEEHEEEE | Kciuk i mały palec wyprostowane, gest rockstara |
+| 8 | Shhh silenced cat | Tylko palec wskazujący, czubkiem opartym o usta |
+| 9 | Laugh and point cat | Tylko palec wskazujący, wycelowany prosto w obiektyw (nie w górę) — palec mocno się skraca w 2D, a jego czubek wypada bliżej kamery niż nadgarstek |
+| 10 | Erm ackshuALLY! cat | Tylko palec wskazujący, trzymany z dala od twarzy |
+| 11 | Shocked/kidnapped cat | Ręka zakrywająca usta |
+| 12 | gGIMME MONIE!! | Jedna otwarta dłoń, wszystkie palce wyprostowane, z dala od twarzy |
+| 13 | Side eye cat | Odwróć głowę o 15°+ w dowolną stronę (prawdziwy odczyt yaw pozycji głowy) |
+| 14 | Pokercat | Domyślny |
+| 15 | Spinny OIIAI cat | Kręcisz się!!!! |
 
+Obrazki memów leżą w `memes/`. Część gestów losuje spośród kilku obrazków.
 
-Meme images live in `memes/`. A couple of gestures pick randomly between multiple images.
+Gestów jest 15, ale plików w `memes/` — 21, bo pięć gestów losuje między kilkoma obrazkami zamiast trzymać się jednego:
+- Muehehe — 3 pliki
+- Pokercat — 2 pliki
+- Erm ackshuALLY! cat — 2 pliki
+- Thumbs up cat — 2 pliki
+- Shocked/kidnapped cat — 2 pliki
 
-## Running it — desktop (Python)
+Reszta gestów ma po jednym pliku (w tym `spin cat.mov` dla Spinny OIIAI cat — to jedyny gest z filmikiem zamiast obrazka).
 
-Requires Python 3 and a webcam.
+## Uruchomienie — desktop (Python)
 
-Easiest way: just double-click **`Launch Gesture Meme.command`**. First run takes a minute to set itself up (installs everything automatically), then launches straight away. Every run after that is instant.
+Wymaga Pythona 3 i kamerki.
 
-**First time opening it:** macOS will warn "cannot be opened because it is from an unidentified developer" — this is normal for any downloaded script, not specific to this one. Right-click the file → **Open** → click **Open** in the dialog that appears. You only need to do this once.
+Najprościej: kliknij dwa razy **`Launch Gesture Meme.command`**. Pierwsze uruchomienie zajmuje z minutę (samo się wszystko instaluje), potem startuje od razu. Każde kolejne uruchomienie jest już błyskawiczne.
 
-Or manually, if you prefer Terminal:
+**Przy pierwszym uruchomieniu:** macOS pokaże ostrzeżenie, że aplikacja pochodzi od niezidentyfikowanego dewelopera ("cannot be opened because it is from an unidentified developer") — to normalne przy każdym pobranym skrypcie, nie tylko przy tym. Kliknij plik prawym przyciskiem → **Otwórz** → potwierdź **Otwórz** w oknie, które się pojawi. Trzeba to zrobić tylko raz.
+
+Albo ręcznie, jeśli wolisz terminal:
 
 ```bash
 python3 -m venv .venv
@@ -48,7 +56,7 @@ pip install -r requirements.txt
 python3 gesture_meme.py
 ```
 
-Press `q` or `Esc` in the Camera window to quit.
+Wciśnij `q` lub `Esc` w oknie Camera, żeby wyjść.
 
 ## Uruchomienie na Windowsie
 
@@ -66,34 +74,34 @@ Press `q` or `Esc` in the Camera window to quit.
    startują od razu.
 6. Wyjście z programu: `q` lub `Esc` w oknie Camera.
 
-## Running it — browser
+## Uruchomienie — przeglądarka
 
-No install needed, but the webcam API requires serving over HTTP (opening `index.html` directly as a `file://` URL will not get camera permission). From this folder:
+Nie trzeba niczego instalować, ale API kamerki wymaga serwowania po HTTP (otwarcie `index.html` bezpośrednio jako URL `file://` nie da uprawnień do kamerki). Z poziomu tego folderu:
 
 ```bash
 python3 -m http.server 8000
 ```
 
-Then open `http://localhost:8000` and allow camera access. Models load from Google's hosted MediaPipe CDN at runtime, so nothing local is needed for the browser version.
+Potem otwórz `http://localhost:8000` i zezwól na dostęp do kamerki. Modele ładują się w locie z CDN-a MediaPipe hostowanego przez Google, więc do wersji przeglądarkowej nic lokalnie nie jest potrzebne.
 
-## Live debug HUD
+## Podgląd debugowy na żywo
 
-The Camera window always shows a small readout in the top-left corner:
+Okno Camera zawsze pokazuje mały odczyt w lewym górnym rogu:
 
 ```
 gesture: sideEyeCat
 yaw: +18.4 deg  (side-eye thr +/-15.0)
 ```
 
-Useful for tuning the detection thresholds at the top of `gesture_meme.py` / `app.js` if a gesture is triggering too easily or not easily enough for your setup/lighting.
+Przydaje się do strojenia progów detekcji na górze `gesture_meme.py` / `app.js`, jeśli jakiś gest łapie się za łatwo albo za rzadko przy Twoim ustawieniu/oświetleniu.
 
-## Project layout
+## Struktura projektu
 
 ```
-gesture_meme.py   desktop version (OpenCV + MediaPipe Python tasks API)
-app.js            browser version (MediaPipe tasks-vision WASM)
-index.html        browser UI shell
-memes/            meme images (+ one video, unused for now)
-models/           MediaPipe .task model files used by the desktop version
-requirements.txt  Python dependencies
+gesture_meme.py   wersja desktopowa (OpenCV + MediaPipe Python tasks API)
+app.js            wersja przeglądarkowa (MediaPipe tasks-vision WASM)
+index.html        szkielet UI przeglądarki
+memes/            obrazki memów (+ jeden filmik, na razie nieużywany)
+models/           pliki modeli MediaPipe .task używane przez wersję desktopową
+requirements.txt  zależności Pythona
 ```
