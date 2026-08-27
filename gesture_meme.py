@@ -7,14 +7,16 @@ Opens two windows, side by side like the OBS/streamer setups:
 
 Gestures:
   rockstar / shaka  -> memes/cat.jpg
-  default (no hand) -> memes/pokercat.jpg
+  default (no hand) -> memes/pokercat.jpg, memes/deadpan cat.png
   one finger up     -> memes/profcat.jpg, memes/professorcat.jpg
   point at camera (index finger aimed at the lens, not up)  -> memes/laugh and point .jpg
+  thumbs up (thumb out, other four fingers curled)         -> memes/thumbs up cat.jpg,
+                                                                memes/crying thumbs up cat.jpg
   fist / punch      -> memes/punchcat.jpg
   shhh              -> memes/shhcat.jpg
   two fingers together (both hands, tips touching) -> memes/uwucat.jpg, memes/uwucatt.jpg,
                                                         memes/fingers together muehehe .jpg
-  hand covering face -> memes/hand cover face .jpg
+  hand covering face -> memes/hand cover face .jpg, memes/shocked cat.jpg
   crash-out cat (two hands up beside the face)            -> memes/crashout cat .jpg
   two hands on head                                        -> memes/two hands on head .jpg
   hand stretched out, palm facing camera (open hand)       -> memes/hand stretched out, palm facing up .jpg
@@ -54,13 +56,14 @@ MEMES = ROOT / "memes"
 
 GESTURE_MEMES = {
     "rockstar": ["cat.jpg"],
-    "default": ["pokercat.jpg"],
+    "default": ["pokercat.jpg", "deadpan cat.png"],
     "oneFingerUp": ["profcat.jpg", "professorcat.jpg"],
     "pointAtCamera": ["laugh and point .jpg"],
+    "thumbsUp": ["thumbs up cat.jpg", "crying thumbs up cat.jpg"],
     "fist": ["punchcat.jpg"],
     "shhh": ["shhcat.jpg"],
     "twoFingersTogether": ["uwucat.jpg", "uwucatt.jpg", "fingers together muehehe .jpg"],
-    "handCoverFace": ["hand cover face .jpg"],
+    "handCoverFace": ["hand cover face .jpg", "shocked cat.jpg"],
     "crashOutCat": ["crashout cat .jpg"],
     "twoHandsOnHead": ["two hands on head .jpg"],
     "handStretchedOut": ["hand stretched out, palm facing up .jpg"],
@@ -355,6 +358,15 @@ class GestureState:
                     return "crashOutCat"
 
         h = hands[0]
+
+        # thumbs up vs. fist: both have all four fingers curled
+        # (curledCount == 4), so thumbOut (reused as-is from rockstar - it
+        # only measures how far the thumb tip sits from the pinky base,
+        # independent of what the other fingers are doing) is what tells
+        # a thumb sticking up out of the fist apart from a thumb tucked
+        # into a real punch. Must come before the fist check to win.
+        if h["curledCount"] == 4 and h["thumbOut"]:
+            return "thumbsUp"
 
         if h["curledCount"] == 4:
             return "fist"
