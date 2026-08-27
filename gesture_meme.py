@@ -16,6 +16,7 @@ Gestures:
   shhh              -> memes/shhcat.jpg
   two fingers together (both hands, tips touching) -> memes/uwucat.jpg, memes/uwucatt.jpg,
                                                         memes/fingers together muehehe .jpg
+  point at watch (one hand points, tip near the other hand's wrist)  -> memes/point at watch cat.jpg
   hand covering face -> memes/hand cover face .jpg, memes/shocked cat.jpg
   crash-out cat (two hands up beside the face)            -> memes/crashout cat .jpg
   two hands on head                                        -> memes/two hands on head .jpg
@@ -24,11 +25,12 @@ Gestures:
   spin cat (spinning fast in your chair)                   -> memes/spin cat.mov (plays as a video)
 
 The Camera window shows a live debug readout (head yaw, optical-flow
-magnitude/coherence, and the point-at-camera foreshortening/z readings) vs.
-their trigger thresholds in the top-left corner so side-eye, spin, and
-point-at-camera can all be tuned by eye - see SIDE_EYE_YAW_DEG,
-SPIN_FLOW_SCORE_THRESHOLD, and POINT_AT_CAMERA_2D_LEN_MAX /
-POINT_AT_CAMERA_Z_DELTA_MAX below.
+magnitude/coherence, the point-at-camera foreshortening/z readings, and the
+point-at-watch fingertip-to-wrist distance) vs. their trigger thresholds in
+the top-left corner so side-eye, spin, point-at-camera, and point-at-watch
+can all be tuned by eye - see SIDE_EYE_YAW_DEG, SPIN_FLOW_SCORE_THRESHOLD,
+POINT_AT_CAMERA_2D_LEN_MAX / POINT_AT_CAMERA_Z_DELTA_MAX, and
+POINT_AT_WATCH_DIST_MAX below.
 
 Press q or ESC to quit.
 """
@@ -63,6 +65,7 @@ GESTURE_MEMES = {
     "fist": ["punchcat.jpg"],
     "shhh": ["shhcat.jpg"],
     "twoFingersTogether": ["uwucat.jpg", "uwucatt.jpg", "fingers together muehehe .jpg"],
+    "pointAtWatch": ["point at watch cat.jpg"],
     "handCoverFace": ["hand cover face .jpg", "shocked cat.jpg"],
     "crashOutCat": ["crashout cat .jpg"],
     "twoHandsOnHead": ["two hands on head .jpg"],
@@ -145,6 +148,12 @@ HAND_COVER_FACE_DIST_FACE_SEEN = 0.7
 # the lens vs. straight up to tune these for your webcam/hand.
 POINT_AT_CAMERA_2D_LEN_MAX = 0.55  # lower = demand more foreshortening (stricter); raise if it won't trigger
 POINT_AT_CAMERA_Z_DELTA_MAX = -0.20  # more negative = demand a stronger "toward camera" z read (stricter); raise toward 0 if it won't trigger
+
+# point-at-watch: how close the pointing hand's fingertip needs to get to
+# the other hand's wrist (both hands' handScale-normalized), the "you're
+# late" gesture. Watch the live "point-watch dist" readout in the Camera
+# window while making the gesture to tune this for your setup.
+POINT_AT_WATCH_DIST_MAX = 1.2  # lower = demand the fingertip land closer to the wrist (stricter); raise if it won't trigger
 
 HAND_CONNECTIONS = [
     (0, 1), (1, 2), (2, 3), (3, 4),
@@ -273,6 +282,7 @@ class GestureState:
         self.last_flow_fraction_debug = 0.0
         self.last_point_cam_len_debug = 0.0
         self.last_point_cam_z_debug = 0.0
+        self.last_point_watch_dist_debug = 0.0
 
     def update_flow(self, magnitude, coherence):
         now = time.time() * 1000
@@ -344,6 +354,29 @@ class GestureState:
                 tip_gap = dist(hands[0]["indexTip"], hands[1]["indexTip"]) / avg_scale
                 if tip_gap < 1.4:
                     return "twoFingersTogether"
+
+            # point-at-watch: one hand pointing (is_pointing), its fingertip
+            # near the other hand's wrist - the "you're late" gesture. We
+            # don't know which of the two detected hands is the pointer, so
+            # both combinations are checked. Distance is normalized by the
+            # average of both hands' handScale, the same averaging
+            # twoFingersTogether uses just above - unlike shhh (which has
+            # an unambiguous single scale reference, the face) neither hand
+            # here is more "authoritative" as the size reference, and
+            # averaging also damps single-hand landmark noise. Doesn't
+            # depend on face_is_fresh, so it's checked outside that gate,
+            # right after twoFingersTogether (the only other two-hand shape
+            # test it could plausibly be confused with, and it wins first
+            # since tip-to-tip touching is checked above).
+            avg_scale = (hands[0]["handScale"] + hands[1]["handScale"]) / 2
+            combo_dists = [
+                (dist(pointer["indexTip"], target["wrist"]) / avg_scale, is_pointing(pointer))
+                for pointer, target in ((hands[0], hands[1]), (hands[1], hands[0]))
+            ]
+            self.last_point_watch_dist_debug = min(d for d, _ in combo_dists)
+            for d, pointer_is_pointing in combo_dists:
+                if pointer_is_pointing and d < POINT_AT_WATCH_DIST_MAX:
+                    return "pointAtWatch"
 
             if face_is_fresh:
                 mouth_center, face_width, _, _, _ = self.last_face
@@ -452,6 +485,7 @@ def draw_debug_hud(frame, state, gesture):
         f"peak score (last 2s): {state.last_flow_peak_debug:.2f}  <- read this AFTER you stop spinning",
         f"point-cam len: {state.last_point_cam_len_debug:.2f} (thr <{POINT_AT_CAMERA_2D_LEN_MAX:.2f})  "
         f"z: {state.last_point_cam_z_debug:+.2f} (thr <{POINT_AT_CAMERA_Z_DELTA_MAX:.2f})",
+        f"point-watch dist: {state.last_point_watch_dist_debug:.2f}  (thr <{POINT_AT_WATCH_DIST_MAX:.2f})",
     ]
     for i, line in enumerate(lines):
         y = 24 + i * 22

@@ -13,19 +13,20 @@ Checked in this order — when a pose could match more than one, the earlier one
 | # | Gesture | How to trigger |
 |---|---|---|
 | 1 | Muehehe | Both hands up, index fingers only, tips touching |
-| 2 | Devo cat | Both hands up, above the top of your head |
-| 3 | Crash out cord chewing kitty | Both hands up beside your face to hold yummy electrical cable |
-| 4 | Thumbs up cat | One hand, thumb out, other four fingers curled |
-| 5 | I will punch you | One hand, all four fingers curled, thumb tucked in |
-| 6 | EHHEHEEEHEEEE | Thumb + pinky out, rockstar cat |
-| 7 | Shhh silenced cat | Index finger only, tip resting on your mouth |
-| 8 | Laugh and point cat | Index finger only, pointed straight at the lens (not up) — the finger foreshortens hard in 2D and its tip reads closer to the camera than your wrist |
-| 9 | Erm ackshuALLY! cat | Index finger only, held away from your face |
-| 10 | Shocked/kidnapped cat | Hand cover mouth |
-| 11 | gGIMME MONIE!! | One open palm, all fingers extended, away from your face |
-| 12 | Side eye cat | Turn your head 15°+ either way (real head-pose yaw) |
-| 13 | Pokercat | Default |
-| 14 | Spinny OIIAI cat | You spin!!!! |
+| 2 | You're late! cat | One hand points, its fingertip near the other hand's wrist ("point at your watch") |
+| 3 | Devo cat | Both hands up, above the top of your head |
+| 4 | Crash out cord chewing kitty | Both hands up beside your face to hold yummy electrical cable |
+| 5 | Thumbs up cat | One hand, thumb out, other four fingers curled |
+| 6 | I will punch you | One hand, all four fingers curled, thumb tucked in |
+| 7 | EHHEHEEEHEEEE | Thumb + pinky out, rockstar cat |
+| 8 | Shhh silenced cat | Index finger only, tip resting on your mouth |
+| 9 | Laugh and point cat | Index finger only, pointed straight at the lens (not up) — the finger foreshortens hard in 2D and its tip reads closer to the camera than your wrist |
+| 10 | Erm ackshuALLY! cat | Index finger only, held away from your face |
+| 11 | Shocked/kidnapped cat | Hand cover mouth |
+| 12 | gGIMME MONIE!! | One open palm, all fingers extended, away from your face |
+| 13 | Side eye cat | Turn your head 15°+ either way (real head-pose yaw) |
+| 14 | Pokercat | Default |
+| 15 | Spinny OIIAI cat | You spin!!!! |
 
 
 Meme images live in `memes/`. A couple of gestures pick randomly between multiple images.
