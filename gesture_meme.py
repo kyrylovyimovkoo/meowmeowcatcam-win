@@ -9,6 +9,7 @@ Gestures:
   rockstar / shaka  -> memes/cat.jpg
   default (no hand) -> memes/pokercat.jpg
   one finger up     -> memes/profcat.jpg, memes/professorcat.jpg
+  point at camera (index finger aimed at the lens, not up)  -> memes/laugh and point .jpg
   fist / punch      -> memes/punchcat.jpg
   shhh              -> memes/shhcat.jpg
   two fingers together (both hands, tips touching) -> memes/uwucat.jpg, memes/uwucatt.jpg,
@@ -20,10 +21,12 @@ Gestures:
   side eye (head turned to the side)                       -> memes/side eye cat.jpg
   spin cat (spinning fast in your chair)                   -> memes/spin cat.mov (plays as a video)
 
-The Camera window shows a live debug readout (head yaw, and optical-flow
-magnitude/coherence, vs. their trigger thresholds) in the top-left corner so
-side-eye and spin can both be tuned by eye - see SIDE_EYE_YAW_DEG and
-SPIN_FLOW_SCORE_THRESHOLD below.
+The Camera window shows a live debug readout (head yaw, optical-flow
+magnitude/coherence, and the point-at-camera foreshortening/z readings) vs.
+their trigger thresholds in the top-left corner so side-eye, spin, and
+point-at-camera can all be tuned by eye - see SIDE_EYE_YAW_DEG,
+SPIN_FLOW_SCORE_THRESHOLD, and POINT_AT_CAMERA_2D_LEN_MAX /
+POINT_AT_CAMERA_Z_DELTA_MAX below.
 
 Press q or ESC to quit.
 """
@@ -53,6 +56,7 @@ GESTURE_MEMES = {
     "rockstar": ["cat.jpg"],
     "default": ["pokercat.jpg"],
     "oneFingerUp": ["profcat.jpg", "professorcat.jpg"],
+    "pointAtCamera": ["laugh and point .jpg"],
     "fist": ["punchcat.jpg"],
     "shhh": ["shhcat.jpg"],
     "twoFingersTogether": ["uwucat.jpg", "uwucatt.jpg", "fingers together muehehe .jpg"],
@@ -121,6 +125,23 @@ SPIN_FLOW_PEAK_HOLD_MS = 2000
 # near the face).
 HAND_COVER_FACE_DIST_FACE_LOST = 1.3
 HAND_COVER_FACE_DIST_FACE_SEEN = 0.7
+
+# point-at-camera: a single extended index finger aimed at the lens instead
+# of up in the air. Two signals, both required:
+#   1. 2D foreshortening - MCP(5)->TIP(8) is measured in the image plane
+#      (x,y only) and normalized by handScale. Pointing up, that segment is
+#      close to the finger's real length; pointing at the lens, it collapses
+#      toward zero on screen because the finger is now aimed along the
+#      camera's optical axis instead of across it.
+#   2. z confirmation - mediapipe's hand z is a rough, learned relative
+#      depth (wrist = origin, smaller/more negative = closer to the
+#      camera), not a metric measurement, so it's used only to confirm
+#      direction, not as the primary test. A real "at the camera" point
+#      pulls indexTip.z well below wrist.z.
+# Watch the live "point-cam" readout in the Camera window while pointing at
+# the lens vs. straight up to tune these for your webcam/hand.
+POINT_AT_CAMERA_2D_LEN_MAX = 0.55  # lower = demand more foreshortening (stricter); raise if it won't trigger
+POINT_AT_CAMERA_Z_DELTA_MAX = -0.20  # more negative = demand a stronger "toward camera" z read (stricter); raise toward 0 if it won't trigger
 
 HAND_CONNECTIONS = [
     (0, 1), (1, 2), (2, 3), (3, 4),
@@ -191,6 +212,7 @@ def classify_hand(landmarks):
         "curledCount": curled_count,
         "handScale": hand_scale,
         "indexTip": pts[8],
+        "indexMcp": pts[5],
         "wrist": pts[0],
         "palmCenter": pts[9],
     }
@@ -246,6 +268,8 @@ class GestureState:
         self.last_flow_score_debug = 0.0
         self.last_flow_peak_debug = 0.0
         self.last_flow_fraction_debug = 0.0
+        self.last_point_cam_len_debug = 0.0
+        self.last_point_cam_z_debug = 0.0
 
     def update_flow(self, magnitude, coherence):
         now = time.time() * 1000
@@ -349,6 +373,19 @@ class GestureState:
                 d = dist(h["indexTip"], mouth_center) / face_width
                 if d < 0.55:
                     return "shhh"
+
+            # point-at-camera: see POINT_AT_CAMERA_* above. Computed here
+            # (not just on trigger) so the HUD readout is live for tuning.
+            index_mcp = h["indexMcp"]
+            tip2d_len = math.hypot(
+                h["indexTip"][0] - index_mcp[0], h["indexTip"][1] - index_mcp[1]
+            ) / h["handScale"]
+            z_delta = (h["indexTip"][2] - h["wrist"][2]) / h["handScale"]
+            self.last_point_cam_len_debug = tip2d_len
+            self.last_point_cam_z_debug = z_delta
+            if tip2d_len < POINT_AT_CAMERA_2D_LEN_MAX and z_delta < POINT_AT_CAMERA_Z_DELTA_MAX:
+                return "pointAtCamera"
+
             return "oneFingerUp"
 
         # hand covering face: the one hand we see sits roughly where the
@@ -401,6 +438,8 @@ def draw_debug_hud(frame, state, gesture):
         f"flow mag: {state.last_flow_magnitude_debug:.2f}  (thr {SPIN_MAG_THRESHOLD:.2f})",
         f"spin fraction (2.2s window): {state.last_flow_fraction_debug:.2f}  (thr {SPIN_FRACTION_REQUIRED:.2f})",
         f"peak score (last 2s): {state.last_flow_peak_debug:.2f}  <- read this AFTER you stop spinning",
+        f"point-cam len: {state.last_point_cam_len_debug:.2f} (thr <{POINT_AT_CAMERA_2D_LEN_MAX:.2f})  "
+        f"z: {state.last_point_cam_z_debug:+.2f} (thr <{POINT_AT_CAMERA_Z_DELTA_MAX:.2f})",
     ]
     for i, line in enumerate(lines):
         y = 24 + i * 22
