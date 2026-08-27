@@ -149,6 +149,19 @@ HAND_COVER_FACE_DIST_FACE_SEEN = 0.7
 POINT_AT_CAMERA_2D_LEN_MAX = 0.55  # lower = demand more foreshortening (stricter); raise if it won't trigger
 POINT_AT_CAMERA_Z_DELTA_MAX = -0.20  # more negative = demand a stronger "toward camera" z read (stricter); raise toward 0 if it won't trigger
 
+# thumbs up vs. a normal fist with the thumb just resting against the
+# curled fingers: thumb_pinky_spread (used for thumbOut, shared with
+# rockstar - do NOT retune it here) only measures how far the thumb tip is
+# from the hand, not which direction it points, so a thumb lying along the
+# side of a closed fist can already clear that threshold. This adds a
+# direction check: how far ABOVE the knuckle line (landmark 9) the thumb
+# tip (landmark 4) sits in image y, normalized by handScale - a real
+# thumbs-up pushes the tip well above that line; a resting thumb stays at
+# or below it. Assumes a roughly upright hand (wrist below, fingers above);
+# a fist held sideways will read differently. Watch the live "thumb vert"
+# readout in the Camera window to tune.
+THUMB_UP_MIN_VERTICAL = 0.15  # lower = accept a smaller lift above the knuckle line (looser); raise if a resting thumb still triggers it
+
 # point-at-watch: how close the pointing hand's fingertip needs to get to
 # the other hand's wrist (both hands' handScale-normalized), the "you're
 # late" gesture. Watch the live "point-watch dist" readout in the Camera
@@ -213,6 +226,13 @@ def classify_hand(landmarks):
     thumb_pinky_spread = dist(pts[4], pts[17]) / hand_scale
     thumb_out = thumb_pinky_spread > 1.05
 
+    # how far ABOVE the knuckle line (palmCenter, landmark 9) the thumb tip
+    # (landmark 4) sits, in image y, normalized by hand_scale. Image y grows
+    # downward, so a positive value means the thumb tip is higher on screen
+    # than the knuckle line - see THUMB_UP_MIN_VERTICAL below for why this
+    # exists alongside thumb_out/thumbOut.
+    thumb_up_vertical = (pts[9][1] - pts[4][1]) / hand_scale
+
     curled_count = sum(1 for v in (index_up, middle_up, ring_up, pinky_up) if not v)
 
     return {
@@ -221,6 +241,7 @@ def classify_hand(landmarks):
         "ringUp": ring_up,
         "pinkyUp": pinky_up,
         "thumbOut": thumb_out,
+        "thumbUpVertical": thumb_up_vertical,
         "curledCount": curled_count,
         "handScale": hand_scale,
         "indexTip": pts[8],
@@ -283,6 +304,7 @@ class GestureState:
         self.last_point_cam_len_debug = 0.0
         self.last_point_cam_z_debug = 0.0
         self.last_point_watch_dist_debug = 0.0
+        self.last_thumb_up_vert_debug = 0.0
 
     def update_flow(self, magnitude, coherence):
         now = time.time() * 1000
@@ -393,15 +415,16 @@ class GestureState:
         h = hands[0]
 
         # thumbs up vs. fist: both have all four fingers curled
-        # (curledCount == 4), so thumbOut (reused as-is from rockstar - it
-        # only measures how far the thumb tip sits from the pinky base,
-        # independent of what the other fingers are doing) is what tells
-        # a thumb sticking up out of the fist apart from a thumb tucked
-        # into a real punch. Must come before the fist check to win.
-        if h["curledCount"] == 4 and h["thumbOut"]:
-            return "thumbsUp"
-
+        # (curledCount == 4). thumbOut (reused as-is from rockstar, still on
+        # its original 1.05 threshold) only measures how far the thumb tip
+        # sits from the pinky base, not which direction it points - a thumb
+        # resting along the side of a closed fist can clear that threshold
+        # too. thumbUpVertical (see THUMB_UP_MIN_VERTICAL above) adds the
+        # missing direction check. Both must hold to win over fist.
         if h["curledCount"] == 4:
+            self.last_thumb_up_vert_debug = h["thumbUpVertical"]
+            if h["thumbOut"] and h["thumbUpVertical"] > THUMB_UP_MIN_VERTICAL:
+                return "thumbsUp"
             return "fist"
 
         if h["thumbOut"] and h["pinkyUp"] and not h["indexUp"] and not h["middleUp"] and not h["ringUp"]:
@@ -486,6 +509,7 @@ def draw_debug_hud(frame, state, gesture):
         f"point-cam len: {state.last_point_cam_len_debug:.2f} (thr <{POINT_AT_CAMERA_2D_LEN_MAX:.2f})  "
         f"z: {state.last_point_cam_z_debug:+.2f} (thr <{POINT_AT_CAMERA_Z_DELTA_MAX:.2f})",
         f"point-watch dist: {state.last_point_watch_dist_debug:.2f}  (thr <{POINT_AT_WATCH_DIST_MAX:.2f})",
+        f"thumb vert: {state.last_thumb_up_vert_debug:+.2f}  (thr >{THUMB_UP_MIN_VERTICAL:.2f})",
     ]
     for i, line in enumerate(lines):
         y = 24 + i * 22
