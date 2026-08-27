@@ -2,5 +2,5 @@
 __pycache__/
 *.pyc
 .DS_Store
-flow_debug_log.csv
+flow_debug_log*.csv
 log.txt

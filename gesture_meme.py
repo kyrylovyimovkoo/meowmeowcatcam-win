@@ -90,37 +90,41 @@ SIDE_EYE_YAW_DEG = 15.0
 # spin detection: full-frame optical flow, downsized for speed. We compute
 # magnitude (how much of the frame moved, on average) each frame; coherence
 # (what fraction of that motion agreed on one direction) is also computed
-# and logged for reference, but real recorded data showed it wasn't adding
-# discrimination - averaging magnitude across the whole frame already dilutes
-# out small localized motions (a hand gesture only fills a fraction of the
-# frame, so the frame-wide average stays low regardless of coherence).
+# and logged for reference, but was tried and rejected as a discriminator:
+# a real recorded desk-motion (reaching, turning to grab something) came
+# back with coherence 0.95-0.99, indistinguishable from a real spin at the
+# same magnitude - an arm/torso sweep is just as one-directional as a chair
+# spin. Coherence tells you "some motion" from "no motion", not "spin" from
+# "gesture".
 #
-# What actually separates a real spin from a quick lean/reach turned out to
-# be less about "how high does it peak" (both can peak similarly for an
-# instant) and more about *how much of a multi-second window stays elevated*.
-# A real spin is naturally bursty - you slow down, reposition, speed back
-# up - so requiring one perfectly unbroken stretch above threshold was too
-# strict and rejected real spins. Instead: over a trailing ~2.2s window,
-# what fraction of frames had magnitude above a modest threshold? A real
-# spin (even a "weak"/bursty one) kept that fraction above ~0.9; a one-off
-# lean/reach can only fill a fraction of a multi-second window before it
-# settles back down.
+# What actually separates a real spin from a quick lean/reach is duration,
+# not shape or peak height: a real spin sustains elevated magnitude for
+# multiple seconds; a one-off motion is a single burst of a second or two.
+# So instead of a single-frame magnitude check, we track what fraction of a
+# trailing window stayed above a modest per-frame magnitude threshold.
 #
-# Tuned from two real recorded sessions (flow_debug_log.csv, regenerated
-# each run):
-#   real spin (strong)  -> fraction above 0.8 stayed near 0.9-1.0
-#   real spin (weaker)  -> fraction above 0.8 peaked at 0.92-0.93
-#   fast sideways lean   -> a single ~1s burst, well under half of any 2s+ window
+# Tuned from real recorded sessions (flow_debug_log.csv, regenerated each
+# run - copy it out under a different name before re-running if you want to
+# keep a session for comparison):
+#   continuous spin (15s)      -> magnitude rarely exceeds ~0.3-0.4; at
+#                                  thr=0.16 the fraction settled ~0.75-0.82
+#   normal desk sitting (24s)  -> one ~2s reach/turn was the worst case: with
+#                                  a 2.2s window its fraction peaked at 0.45
+#                                  (too close to SPIN_FRACTION_REQUIRED);
+#                                  widening the window to 4000ms - which
+#                                  dilutes a short burst far more than it
+#                                  dilutes a sustained spin - brought that
+#                                  same peak down to 0.24
 # If it's still misfiring or not firing for you, flow_debug_log.csv has the
-# raw numbers from your most recent run - report back what fraction your
-# non-spin motions vs your spins actually reach so this can be re-tuned to
-# your setup.
+# raw numbers from your most recent run - the same trade-off applies: check
+# what magnitude/fraction your non-spin motions vs. your spins actually
+# reach before changing either constant.
 SPIN_FLOW_WIDTH = 160
 SPIN_FLOW_HEIGHT = 90
 SPIN_FLOW_NOISE_FLOOR_PX = 0.4  # per-pixel motion below this is treated as noise, not real motion
 SPIN_FLOW_MIN_MOVING_FRACTION = 0.15  # need at least this much of the frame moving to trust coherence at all
-SPIN_MAG_THRESHOLD = 0.8  # per-frame magnitude counted as "elevated" for the fraction test
-SPIN_FRACTION_WINDOW_MS = 2200  # trailing window the fraction is measured over
+SPIN_MAG_THRESHOLD = 0.16  # per-frame magnitude counted as "elevated" for the fraction test
+SPIN_FRACTION_WINDOW_MS = 4000  # trailing window the fraction is measured over
 SPIN_FRACTION_REQUIRED = 0.55  # fraction of that window that must be elevated to count as spinning
 SPIN_FLOW_PEAK_HOLD_MS = 2000
 
@@ -562,19 +566,6 @@ def main():
     spin_video_cap = cv2.VideoCapture(str(MEMES / GESTURE_MEMES["spinCat"][0]))
     if not spin_video_cap.isOpened():
         raise FileNotFoundError(f"missing meme file: {MEMES / GESTURE_MEMES['spinCat'][0]}")
-
-    # one-time startup diagnostic: on Windows, cv2.VideoCapture can silently
-    # fail to decode .mov (isOpened() sometimes still reports True, but
-    # frame_count comes back <= 0 and/or the first read() fails) - this
-    # pins down whether "spin plays a blank/frozen Meme window" is a codec
-    # problem, independent of whether the spinCat gesture itself is firing.
-    spin_frame_count = spin_video_cap.get(cv2.CAP_PROP_FRAME_COUNT)
-    spin_first_read_ok, _ = spin_video_cap.read()
-    print(
-        f"[spin video diagnostic] isOpened={spin_video_cap.isOpened()} "
-        f"frame_count={spin_frame_count} first_read_ok={spin_first_read_ok}"
-    )
-    spin_video_cap.set(cv2.CAP_PROP_POS_FRAMES, 0)  # rewind past the diagnostic read
 
     def next_spin_frame():
         ok, vframe = spin_video_cap.read()
